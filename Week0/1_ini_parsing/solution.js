@@ -2,11 +2,12 @@ var fs = require('fs'),
     os = require('os'),
     http = require('http'),
     https = require('https'),
+    ArgumentParser = require('argparse').ArgumentParser,
     fileArg = process.argv[2],
     isRemoteFile = (fileArg.indexOf('http://') !== -1 || fileArg.indexOf('https://') !== -1),
     inputFile,
-    fileUrlParts;
-
+    fileUrlParts,
+    explicitType = getExplicitTypeArg(ArgumentParser);
 
 if(isRemoteFile) {
     fileUrlParts = fileArg.split('/');
@@ -18,7 +19,7 @@ if(isRemoteFile) {
             var receivedFileEOL = (fileData.toString().indexOf('\r\n') === -1) ? '\n' : '\r\n'
 
             if(fileData) {
-                convert(inputFile, fileData.toString(), receivedFileEOL);
+                convert(inputFile, fileData.toString(), receivedFileEOL, explicitType);
             }
         });
 
@@ -32,19 +33,20 @@ if(isRemoteFile) {
         if (err) {
             console.log(err);
         } else {
-            convert(fileArg, fileData.toString(), os.EOL);
+            convert(fileArg, fileData.toString(), os.EOL, explicitType);
         }
     });
 }
 
 
-function convert(inputFile, fileData, EOL) {
+function convert(inputFile, fileData, EOL, explicitType) {
     var fileName = inputFile.split('.')[0],
-        fileType = inputFile.split('.')[1],
+        fileType = inputFile.split('.')[1] || explicitType,
         resultFileName,
         resultFileData;
 
-    if(fileType === 'ini') {
+
+    if(fileType === 'ini' || fileType === undefined) {
         resultFileData = convertINItoJSON(fileData, EOL);
         resultFileName = fileName + '.json';
     } else if(fileType === 'json') {
@@ -74,16 +76,16 @@ function convertINItoJSON(iniData, EOL) {
 
         if(item.charAt(0) === '[' && item.charAt(item.length - 1) === ']') {
             currJsonKey = item.replace('[', '').replace(']', '');
-            jsonObject[currJsonKey] = {};
+            jsonObject[currJsonKey.trim()] = {};
         } else {
-            if(item) {
+            if(item && item.charAt(0) !== ';') {
                 propertyParts = item.split('=');
-                jsonObject[currJsonKey][propertyParts[0]] = propertyParts[1];
+                jsonObject[currJsonKey][propertyParts[0].trim()] = propertyParts[1].trim();
             }
         }
     });
 
-    return JSON.stringify(jsonObject);
+    return JSON.stringify(jsonObject, null, 4);
 }
 
 function convertJSONtoINI(jsonData, EOL) {
@@ -103,4 +105,18 @@ function convertJSONtoINI(jsonData, EOL) {
     });
 
     return iniString;
+}
+
+function getExplicitTypeArg(ArgumentParser) {
+    var parser = new ArgumentParser({}),
+        explicitType;
+
+    parser.addArgument(['--type']);
+    args = parser.parseKnownArgs();
+    if(args[0].type) {
+        console.log();
+        explicitType = args[0].type;
+    }
+
+    return explicitType;
 }

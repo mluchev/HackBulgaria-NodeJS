@@ -1,0 +1,15 @@
+{
+  "name": "2_chirper",
+  "version": "0.0.0",
+  "description": "second task for nodejs course @ hack bulgaria",
+  "main": "chirp-server.js",
+  "scripts": {},
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {
+    "argparse": "^0.1.15",
+    "node-uuid": "1.2.0",
+    "underscore": "^1.7.0"
+  }
+}
