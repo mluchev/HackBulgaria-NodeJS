@@ -1,0 +1,8 @@
+{
+  "name": "json-to-mongo",
+  "version": "0.0.1",
+  "main": "json-to-mongo.js",
+  "dependencies": {
+    "mongodb": "^1.4.19"
+  }
+}
