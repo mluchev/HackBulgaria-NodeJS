@@ -2,7 +2,7 @@
   "name": "scraper",
   "version": "1.0.0",
   "description": "communicates with the HackerNews API, gets new articles on a set period and notifies the notifier",
-  "main": "scraper.js",
+  "main": "globalScraper.js",
   "scripts": {},
   "author": "",
   "license": "MIT",

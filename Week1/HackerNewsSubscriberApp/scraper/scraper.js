@@ -25,7 +25,7 @@ storage.initSync({
 function getAndSaveNewArticles(startId, endId) {
     var currId = startId,
         newArticles = [],
-        deferred = Q.defer();;
+        deferred = Q.defer();
 
     async.whilst(function () {
             return currId <= endId;
@@ -35,16 +35,31 @@ function getAndSaveNewArticles(startId, endId) {
                 'url' : "https://hacker-news.firebaseio.com/v0/item/" + currId + ".json?print=pretty",
                 'json' : true
             }, function (error, response, body) {
-                if (!error && response.statusCode == 200) {
-                    if(body.type === 'story') {
+                if (!error) {
+                    if (body.type === 'comment') {
+                        findCommentsStory(body).then(function (res) {
+                            body.storyUrl = res.url;
+
+                            newArticles.push(body);
+                            currId++;
+                            next();
+                        }, function() {
+                            newArticles.push(body);
+                            currId++;
+                            next();
+                        });
+
+                    } else if (body.type === 'story') {
                         newArticles.push(body);
+                        currId++;
+                        next();
+                    } else {
+                        currId++;
+                        next();
                     }
                 }
-                currId++;
-                next();
             });
-        },
-        function (err) {
+        }, function (err) {
             if(err) {
                 console.log(err);
                 deferred.reject();
@@ -54,7 +69,28 @@ function getAndSaveNewArticles(startId, endId) {
                     deferred.resolve(newArticles);
                 }
             }
-        })
+        });
+
+    return deferred.promise;
+}
+
+function findCommentsStory(article) {
+    var deferred = Q.defer();
+
+    if(article.type === 'story') {
+        return article;
+    } else {
+        request.get({
+            'url' : "https://hacker-news.firebaseio.com/v0/item/" + article.parent + ".json?print=pretty",
+            'json' : true
+        }, function (error, response, body) {
+            if (error) {
+                deferred.reject();
+            } else {
+                deferred.resolve(findCommentsStory(body));
+            }
+        });
+    }
 
     return deferred.promise;
 }
