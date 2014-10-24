@@ -5,11 +5,15 @@ var storage = require('node-persist'),
     nodeMailer = require('nodemailer'),
     _ = require('underscore'),
     app = express(),
+    mongodb = require('mongodb'),
+    Q = require('q'),
+    configJson = require('./../config.json'),
+    MongoClient = require('mongodb').MongoClient,
     transporter = nodeMailer.createTransport({
         service: 'gmail',
         auth: {
             user: 'mluchev@gmail.com',
-            pass: '0000'
+            pass: '1111'
         }
     });
 
@@ -20,72 +24,146 @@ storage.initSync({
 });
 
 app.post('/subscribe', function(req, res) {
-    var newSubscriber = req.body,
-        subscribers = storage.getItem('subscribers.json') || {},
-        newSubsKey = keyGenerator.generateKey(30),
-        confirmationKey = keyGenerator.generateKey(30);
+    var newSubscriber = req.body;
 
+    newSubscriber.subscriberKey = keyGenerator.generateKey(30);
+    newSubscriber.confirmationKey = keyGenerator.generateKey(30);
 
-    // insert
-    newSubscriber.confirmationKey = confirmationKey;
-    subscribers[newSubsKey] = newSubscriber;
+    addSubscriber(newSubscriber).then(function() {
+        sendConfirmationEmail(newSubscriber.email, newSubscriber.subscriberKey, newSubscriber.confirmationKey);
 
-    sendConfirmationEmail(newSubscriber.email, newSubsKey, confirmationKey);
-
-    storage.setItem('subscribers.json', subscribers);
-    res.json({'key': newSubsKey});
+        res.json({'key': newSubscriber.subscriberKey});
+    });
 });
+
+
 app.post('/unsubscribe', function(req, res) {
-    var subscriberIdToDelete = req.body.subscriberId,
-        subscribers = storage.getItem('subscribers.json') || {};
-
-    if(subscribers[subscriberIdToDelete]) {
-        // remove({name: 'a'})
-        delete subscribers[subscriberIdToDelete];
-        storage.setItem('subscribers.json', subscribers);
-
+    removeSubscriberById(req.body.subscriberKey).then(function() {
         res.end('Subscriber deleted.');
-    } else {
-        res.end('Subscriber not found.');
-    }
+    });
 });
 
 app.get('/listSubscribers', function(req, res) {
-    var subscribers = storage.getItem('subscribers.json') || {},
-        resList = [];
-
-    Object.keys(subscribers).forEach(function(subscriberId) {
-        var sub = {
-            email: subscribers[subscriberId].email,
-            keywords: subscribers[subscriberId].keywords,
-            type: subscribers[subscriberId].type,
-            subscriberId: subscriberId
-        };
-
-        if(subscribers[subscriberId].confirmationKey) {
-            sub.confirmationKey = subscribers[subscriberId].confirmationKey;
-        }
-
-        resList.push(sub);
+    getAllSubscribersFromDb().then(function(allSubscribers) {
+        res.json(allSubscribers);
     });
-
-    res.json(resList);
-
 });
 
 app.get('/confirmSubscription', function(req, res) {
-    var subscribers = storage.getItem('subscribers.json') || {};
-
-    if(subscribers[req.query.subscriberKey]
-        && (subscribers[req.query.subscriberKey].confirmationKey === req.query.confirmationKey)) {
-        delete subscribers[req.query.subscriberKey].confirmationKey;
-
-        storage.setItem('subscribers.json', subscribers);
+    unsetSubscriberConfirmationKey(req.query.subscriberKey, req.query.confirmationKey).then(function() {
         res.end('Subscription confirmed.');
-    } else {
+    }, function() {
         res.end('Subscription failed.');
-    }
+    });
 });
+
+app.listen(9090);
+
+
+function getAllSubscribersFromDb() {
+
+    var deferred = Q.defer();
+
+    MongoClient.connect(configJson.mongoConnectionUrl, function (err, db) {
+        var collection;
+
+        if (err) {
+            console.log(err);
+            deferred.reject();
+        } else {
+            collection = db.collection('subscribers');
+            collection.find().toArray(function(err, result) {
+                if(err) {
+                    deferred.reject();
+                    console.log(err);
+                } else {
+                    deferred.resolve(result);
+                    db.close();
+                }
+            });
+        }
+    });
+    return deferred.promise;
+}
+
+function removeSubscriberById(subId) {
+    var deferred = Q.defer();
+
+    MongoClient.connect(configJson.mongoConnectionUrl, function (err, db) {
+        var collection;
+
+        if (err) {
+            console.log(err);
+            deferred.reject();
+        } else {
+            collection = db.collection('subscribers');
+            collection.remove({subscriberKey: subId}, function(err, result) {
+                if(err) {
+                    console.log(err);
+                    deferred.reject();
+                } else {
+                    deferred.resolve(result);
+                }
+
+                db.close();
+            });
+        }
+    });
+    return deferred.promise;
+}
+
+function addSubscriber(subscriber) {
+
+    var deferred = Q.defer();
+
+    MongoClient.connect(configJson.mongoConnectionUrl, function (err, db) {
+        var collection;
+
+        if (err) {
+            console.log(err);
+            deferred.reject();
+        } else {
+            collection = db.collection('subscribers');
+            collection.insert(subscriber, function(err, result) {
+                if(err) {
+                    deferred.reject();
+                    console.log(err);
+                } else {
+                    deferred.resolve(result);
+                }
+                db.close();
+            });
+        }
+    });
+    return deferred.promise;
+}
+
+function unsetSubscriberConfirmationKey(subscriberKey, confirmationKey) {
+    var deferred = Q.defer();
+
+    MongoClient.connect(configJson.mongoConnectionUrl, function (err, db) {
+        var collection;
+
+        if (err) {
+            console.log(err);
+            deferred.reject();
+        } else {
+            collection = db.collection('subscribers');
+            collection.update({ subscriberKey: subscriberKey, confirmationKey: confirmationKey },
+                { $unset: { confirmationKey : '' } },
+                function(err, result) {
+                    if(err) {
+                        deferred.reject();
+                        console.log(err);
+                    } else {
+                        deferred.resolve(result);
+                    }
+                    db.close();
+                });
+        }
+    });
+    return deferred.promise;
+}
 
 function sendConfirmationEmail(email, subscriberKey, confirmationKey) {
     var confirmationLink =
@@ -97,7 +175,5 @@ function sendConfirmationEmail(email, subscriberKey, confirmationKey) {
         subject: 'Hacker News Subscriber App - subscription confirm',
         text: "To complete subscription, please click on the following link: " + confirmationLink
     });
-
 }
 
-app.listen(9090);
