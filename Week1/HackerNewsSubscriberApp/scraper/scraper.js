@@ -1,6 +1,9 @@
 var storage = require('node-persist'),
     request = require('request'),
     async = require('async'),
+    configJson = require('./../config.json'),
+    mongodb = require('mongodb'),
+    MongoClient = require('mongodb').MongoClient,
     Q = require('q');
 
 storage.initSync({
@@ -138,8 +141,23 @@ function saveLatestMaxItem(maxItemId) {
 }
 
 function saveNewArticles(newArticles) {
-    var articlesJSON = storage.getItem('articles.json') || {};
+    var deferred = Q.defer();
 
-    articlesJSON['articles'] = newArticles;
-    storage.setItem('articles.json', articlesJSON);
+    MongoClient.connect(configJson.mongoConnectionUrl, function (err, db) {
+        var collection;
+
+        if (err) {
+            console.log(err);
+            deferred.reject();
+        } else {
+            collection = db.collection('articles');
+            collection.insert(newArticles, function(err, result) {
+                if(!err) {
+                    console.log("New articles inserted.");
+                }
+            });
+        }
+    });
+
+    return deferred.promise;
 }

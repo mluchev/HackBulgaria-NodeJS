@@ -2,9 +2,11 @@ var storage = require('node-persist'),
     express = require('express'),
     bodyParser = require('body-parser'),
     request = require('request'),
-    async = require('async'),
     natural = require('natural'),
     Q = require('q'),
+    mongodb = require('mongodb'),
+    configJson = require('./../config.json'),
+    MongoClient = require('mongodb').MongoClient,
     app = express(),
     tokenizer = new natural.WordTokenizer();
 
@@ -14,48 +16,58 @@ storage.initSync({
 
 app.use(bodyParser.json());
 
+app.get('/keywords', function(req, res) {
+    getStoredHistogram().then(function(histogram) {
+        res.json(histogram);
+    }, function() {
+        res.end();
+    });
+});
+
+app.listen(1234);
 
 (function mainLoop(nextId) {
     var currId = nextId || getLastSavedId();
 
+
     getArticle(currId).then(function(article) {
-        processArticle(article);
-        saveLastId(currId);
+        processArticle(article).then(function() {
+            saveLastId(currId);
 
+            setTimeout(function() {
+                mainLoop(currId + 1);
+            }, 0);
+        });
 
+    }, function() {
         setTimeout(function() {
-            mainLoop(currId + 1)
+            mainLoop(currId + 1);
         }, 0);
     });
 })();
 
-app.get('/keywords', function(req, res) {
-    var histogram = getStoredHistogram();
-
-   res.json(histogram);
-});
-
 function processArticle(article) {
-    var textSource = (article.title || '') + ' '
-            +  (article.text || '');
 
-    updateHistogramWordsCount(textSource);
+    var textSource = (article.title || '') + ' '
+            +  (article.text || ''),
+    sourceTextWordHash = getSourceTextWordsHash(textSource);
+    return updateHistogram(sourceTextWordHash);
 }
 
-function updateHistogramWordsCount(sourceText) {
-    var histogram = getStoredHistogram();
+function getSourceTextWordsHash(sourceText) {
+
+    var sourceTextWordHash = {};
 
     tokenizer.tokenize(sourceText.toLowerCase()).forEach(function(word) {
-//        if(isNaN(word)) {
-            if(histogram[word]) {
-                histogram[word]++;
+        if(isNaN(word)) {
+            if(sourceTextWordHash[word]) {
+                sourceTextWordHash[word]++;
             } else {
-                histogram[word] = 1;
+                sourceTextWordHash[word] = 1;
             }
-//        }
+        }
     });
-
-    saveHistogram(histogram);
+    return sourceTextWordHash;
 }
 
 function getArticle(id) {
@@ -69,38 +81,88 @@ function getArticle(id) {
             console.log(error);
             deferred.reject();
         } else {
-            console.log(body);
             deferred.resolve(body);
         }
     });
-
     return deferred.promise;
 }
 
-function getStoredHistogram() {
-    var histogramJson = storage.getItem('histogram.json') || {};
 
-    return histogramJson;
+function getStoredHistogram() {
+    var deferred = Q.defer();
+
+    MongoClient.connect(configJson.mongoConnectionUrl, function (err, db) {
+        if (err) {
+            console.log(err);
+            deferred.reject();
+        } else {
+            db.collection('histogram').find().toArray(function(err, result) {
+                if(result) {
+                    deferred.resolve(result);
+                } else {
+                    console.log(err);
+                    deferred.reject();
+                }
+            });
+        }
+    });
+    return deferred.promise;
 }
 
-function saveHistogram(histogram) {
-    storage.setItem('histogram.json', histogram);
+function updateHistogram(newWordsHash) {
+
+        var deferred = Q.defer();
+
+        MongoClient.connect(configJson.mongoConnectionUrl, function (err, db) {
+            var collection,
+                pendingDbUpdates = [];
+
+            if (err) {
+                console.log(err);
+                deferred.reject();
+            } else {
+                collection = db.collection('histogram');
+                Object.keys(newWordsHash).forEach(function(word) {
+                    var deferred = Q.defer();
+                    pendingDbUpdates.push(deferred.promise);
+
+                    collection.update({ 'keyword' : word },  { $inc: { count: newWordsHash[word] }},
+                        { upsert: true },
+                        function(err, result) {
+                            if(result) {
+                                deferred.resolve(result);
+                            } else {
+                                console.log(err);
+                                deferred.reject();
+                            }
+
+                        }
+                    );
+                });
+
+                Q.all(pendingDbUpdates).then(function() {
+                    deferred.resolve();
+                }, function() {
+                    deferred.reject();
+                });
+            }
+        });
+    return deferred.promise;
 }
 
 
 function getLastSavedId() {
+
     var lastIdJson = storage.getItem('lastId.json') || {},
         lastId = lastIdJson['lastId'] || 1;
-
     return lastId;
 }
 
 function saveLastId(lastId) {
-    var lastIdJson = storage.getItem('lastId.json') || {};
 
+    var lastIdJson = storage.getItem('lastId.json') || {};
     lastIdJson['lastId'] = lastId;
     storage.setItem('lastId.json', lastIdJson);
 }
 
-app.listen(1234);
 

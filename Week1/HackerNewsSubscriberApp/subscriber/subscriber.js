@@ -61,7 +61,6 @@ app.listen(9090);
 
 
 function getAllSubscribersFromDb() {
-
     var deferred = Q.defer();
 
     MongoClient.connect(configJson.mongoConnectionUrl, function (err, db) {
