@@ -155,6 +155,8 @@ function saveNewArticles(newArticles) {
                 if(!err) {
                     console.log("New articles inserted.");
                 }
+
+                db.close();
             });
         }
     });

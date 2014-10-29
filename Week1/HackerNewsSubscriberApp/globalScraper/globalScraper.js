@@ -103,6 +103,8 @@ function getStoredHistogram() {
                     console.log(err);
                     deferred.reject();
                 }
+
+                db.close();
             });
         }
     });
@@ -145,6 +147,8 @@ function updateHistogram(newWordsHash) {
                 }, function() {
                     deferred.reject();
                 });
+
+                db.close();
             }
         });
     return deferred.promise;
