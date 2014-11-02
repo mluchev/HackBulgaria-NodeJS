@@ -1,6 +1,6 @@
-var _ = require('underscore');
-
 function DirectedGraph() {
+    var _ = require('underscore');
+
     this.neighborsList =  {};
 
     this.addEdge = function(nodeA, nodeB) {
@@ -56,7 +56,3 @@ function DirectedGraph() {
 }
 
 module.exports = DirectedGraph;
-
-// TODO tests with Mocha and Chai
-
-
