@@ -1,0 +1,17 @@
+{
+  "name": "1-putting-it-all-together",
+  "version": "0.0.1",
+  "dependencies": {
+    "async": "^0.9.0",
+    "body-parser": "^1.9.2",
+    "chai": "^1.9.2",
+    "express": "^4.10.1",
+    "generate-key": "0.0.6",
+    "mocha": "^2.0.1",
+    "mongodb": "^1.4.19",
+    "mongoose": "^3.8.19",
+    "q": "^1.0.1",
+    "supertest": "^0.15.0",
+    "underscore": "^1.7.0"
+  }
+}
