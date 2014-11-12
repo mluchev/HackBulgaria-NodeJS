@@ -1,4 +1,4 @@
-var expect = require('chai').expect
+var expect = require('chai').expect,
     DirectedGraph = require('./../graph');
 
 describe('Graph', function(){
@@ -77,15 +77,3 @@ describe('Graph', function(){
     });
 });
 
-
-
-//describe('Array', function(){
-//    describe('#indexOf()', function(){
-//        it('should return -1 when the value is not present', function(){
-//            expect(foo).to.be.a('string');
-//            expect(foo).to.equal('bar');
-//            expect(foo).to.have.length(3);
-//            expect(beverages).to.have.property('tea').with.length(3);
-//        })
-//    })
-//});
