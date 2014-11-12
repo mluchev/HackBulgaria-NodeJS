@@ -1,4 +1,4 @@
-(function() {
+module.exports = (function() {
     var bodyParser = require('body-parser'),
         express = require('express'),
         _ = require('underscore'),
@@ -13,7 +13,7 @@
             if(result){
                 res.json({'snippetId': result});
             } else {
-                res.end();
+                res.json({});
             }
         });
     });
@@ -23,7 +23,7 @@
             if(numOfUpdatedDocs){
                 res.json({numOfUpdatedDocs:  numOfUpdatedDocs});
             } else {
-                res.end();
+                res.json({});
             }
         });
     });
@@ -33,7 +33,7 @@
             if(numOfDeletedDocs){
                 res.json({numOfDeletedDocs:  numOfDeletedDocs});
             } else {
-                res.end();
+                res.json({});
             }
         });
     });
@@ -44,17 +44,17 @@
             if(snippets) {
                 res.json(snippets);
             } else {
-                res.end();
+                res.json({});
             }
         });
     });
 
     app.get('/snippetsOfCreator', function(req, res) {
-        persistence.getSnippetsOfCreator(req.query.creator).then(function(snippet) {
-            if(snippet) {
-                res.json(snippet);
+        persistence.getSnippetsOfCreator(req.query.creator).then(function(snippets) {
+            if(snippets) {
+                res.json(snippets);
             } else {
-                res.end();
+                res.json({});
             }
         });
     });
@@ -64,10 +64,12 @@
             if(snippet) {
                 res.json(snippet);
             } else {
-                res.end();
+                res.json({});
             }
         });
     });
 
     app.listen(5001);
+
+    return app;
 })();

@@ -14,9 +14,6 @@ module.exports = (function () {
         })),
         module = {};
 
-    // in the schema/model should be added the file type default convert
-
-
     module.saveSnippet = function(snippet) {
         var deferred = Q.defer(),
             newSnippet = new Snippet({
@@ -26,6 +23,10 @@ module.exports = (function () {
                 creator: snippet.creator,
                 type: snippet.type
             });
+
+        if(snippet.filename.split(".")[1] && snippet.type === 'txt') {
+            newSnippet.type = snippet.filename.split(".")[1];
+        }
 
         newSnippet.save(function (err, savedSnippet) {
             if (err) {
@@ -72,7 +73,7 @@ module.exports = (function () {
     module.getSnippet = function(snippetId) {
         var deferred = Q.defer();
 
-        Snippet.find({snippetId: snippetId}, 'filename content creator type', function (err, snippet) {
+        Snippet.findOne({snippetId: snippetId}, 'filename content creator type', function (err, snippet) {
             if (err) {
                 console.error(err);
                 deferred.reject();
