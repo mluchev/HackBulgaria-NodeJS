@@ -3,19 +3,6 @@ var expect = require('chai').expect,
     app = require('./app');
 
 describe('Snippet', function(){
-//    var testingGraph;
-//
-//    beforeEach(function(){
-//        testingGraph = new DirectedGraph();
-//        testingGraph.addEdge('marto', 'ivan');
-//        testingGraph.addEdge('marto', 'georgi');
-//        testingGraph.addEdge('ivan', 'stefan');
-//        testingGraph.addEdge('ivan', 'maria');
-//        testingGraph.addEdge('georgi', 'rado');
-//        testingGraph.addEdge('maria', 'marto');
-//        testingGraph.addEdge('rado', 'pesho');
-//    });
-
     var testSnippetId;
 
     describe('POST /createSnippet', function(){
@@ -99,26 +86,6 @@ describe('Snippet', function(){
         })
     });
 
-    describe('GET /snippet', function(){
-        it('should return the updated snippet', function(done){
-            request(app)
-                .get('/snippet?snippetId=' + testSnippetId)
-                .expect(200)
-                .end(function(err, res){
-                    if (err) {
-                        throw err;
-                    } else {
-                        expect(res.body).to.have.property("filename");
-                        expect(res.body).to.have.property("content");
-                        expect(res.body).to.have.property("creator");
-                        expect(res.body).to.have.property("type");
-                        expect(res.body.filename).to.equal("ccc.js");
-                        expect(res.body.creator).to.equal("cmuchev");
-                        done();
-                    }
-                });
-        })
-    });
 
     describe('GET /snippetsOfCreator', function(){
         it('should return a nonempty array of snippets', function(done){

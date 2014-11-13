@@ -1,9 +1,7 @@
 module.exports = (function() {
     var bodyParser = require('body-parser'),
         express = require('express'),
-        _ = require('underscore'),
         app = express(),
-        Q = require('q'),
         persistence = require('./persistence');
 
     app.use(bodyParser.json());
